@@ -36,7 +36,7 @@ buildscript {
 
 plugins {
   id 'nebula.netflixoss' version '4.1.0'
-  id 'com.palantir.git-version' version '0.9.1'
+  id 'com.palantir.git-version' version '0.11.0'
   id 'com.palantir.consistent-versions' version '1.9.2'
 }
 
