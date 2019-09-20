@@ -30,7 +30,7 @@ buildscript {
     classpath 'com.diffplug.spotless:spotless-plugin-gradle:3.14.0'
     classpath 'gradle.plugin.org.inferred:gradle-processors:2.1.0'
     classpath 'me.champeau.gradle:jmh-gradle-plugin:0.4.8'
-    classpath 'com.netflix.nebula:nebula-publishing-plugin:9.5.0'
+    classpath 'com.netflix.nebula:nebula-publishing-plugin:13.6.1'
   }
 }
 
