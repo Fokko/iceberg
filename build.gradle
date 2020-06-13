@@ -395,7 +395,7 @@ project(':iceberg-spark') {
       // Spark 2.4.4 can only use the below datanucleus version, the versions introduced
       // by Hive 2.3.6 will meet lots of unexpected issues, so here force to use the versions
       // introduced by Hive 1.2.1.
-      force 'org.datanucleus:datanucleus-api-jdo:3.2.6'
+      force 'org.datanucleus:datanucleus-api-jdo:5.2.3'
       force 'org.datanucleus:datanucleus-core:3.2.10'
       force 'org.datanucleus:datanucleus-rdbms:3.2.9'
     }
