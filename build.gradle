@@ -397,7 +397,7 @@ project(':iceberg-spark') {
       // introduced by Hive 1.2.1.
       force 'org.datanucleus:datanucleus-api-jdo:3.2.6'
       force 'org.datanucleus:datanucleus-core:3.2.10'
-      force 'org.datanucleus:datanucleus-rdbms:3.2.9'
+      force 'org.datanucleus:datanucleus-rdbms:5.2.2'
     }
   }
 
