@@ -64,6 +64,7 @@ jobs:
     - name: Run Apache-Spark setup
       working-directory: ./python/dev
       run: |
+        docker-compose rm -f
         docker-compose up -d
         sleep 30
     - name: Install poetry
