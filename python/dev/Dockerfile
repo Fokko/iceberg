@@ -38,7 +38,7 @@ WORKDIR ${SPARK_HOME}
 
 # Download spark
 RUN curl https://dlcdn.apache.org/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz -o spark-3.3.1-bin-hadoop3.tgz \
- && tar xvzf spark-3.3.1-bin-hadoop3.tgz --directory /opt/spark --strip-components 1 \
+ && tar xzf spark-3.3.1-bin-hadoop3.tgz --directory /opt/spark --strip-components 1 \
  && rm -rf spark-3.3.1-bin-hadoop3.tgz
 
 # Download iceberg spark runtime
