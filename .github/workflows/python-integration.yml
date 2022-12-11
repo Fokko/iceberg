@@ -42,14 +42,6 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 2
-    - name: Install poetry
-      run: pip install poetry
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        cache: poetry
-        cache-dependency-path: |
-          ./python/poetry.lock
     - shell: pwsh
       id: check_file_changed
       run: |
@@ -69,15 +61,21 @@ jobs:
     - name: Use Image Cache if cache hit
       if: steps.cache-docker.outputs.cache-hit == 'true'
       run: docker image load --input ./ci/cache/docker/python/python-integration.tar
-    - name: Install
-      working-directory: ./python
-      run: make install
     - name: Run Apache-Spark setup
       working-directory: ./python/dev
       run: |
         docker-compose up -d
-        # Give it some time to boot
-        sleep 20
+    - name: Install poetry
+      run: pip install poetry
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: poetry
+        cache-dependency-path: |
+          ./python/poetry.lock
+    - name: Install
+      working-directory: ./python
+      run: make install
     - name: Tests
       working-directory: ./python
       run: make test-integration
