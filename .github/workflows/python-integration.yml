@@ -63,7 +63,9 @@ jobs:
       run: docker image load --input ./ci/cache/docker/python/python-integration.tar
     - name: Run Apache-Spark setup
       working-directory: ./python/dev
-      run: docker-compose up -d
+      run: |
+        docker-compose up -d
+        sleep 10
     - name: Install poetry
       run: pip install poetry
     - uses: actions/setup-python@v4
