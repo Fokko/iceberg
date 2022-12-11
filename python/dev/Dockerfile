@@ -15,8 +15,8 @@
 
 FROM python:3.9-bullseye
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get -qq update && \
+    apt-get -qq install -y --no-install-recommends \
       sudo \
       curl \
       vim \
@@ -25,7 +25,7 @@ RUN apt-get update && \
       build-essential \
       software-properties-common \
       ssh && \
-    apt-get clean && \
+    apt-get -qq clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Optional env variables

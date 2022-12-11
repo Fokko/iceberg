@@ -65,7 +65,7 @@ jobs:
       working-directory: ./python/dev
       run: |
         docker-compose up -d
-        sleep 10
+        sleep 30
     - name: Install poetry
       run: pip install poetry
     - uses: actions/setup-python@v4
