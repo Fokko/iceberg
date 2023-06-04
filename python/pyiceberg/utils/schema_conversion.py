@@ -76,7 +76,7 @@ AvroType = Union[str, Any]
 
 
 class AvroSchemaConversion:
-    def avro_to_iceberg(self, avro_schema: dict[str, Any]) -> Schema:
+    def avro_to_iceberg(self, avro_schema: Dict[str, Any]) -> Schema:
         """Converts an Apache Avro into an Apache Iceberg schema equivalent
 
         This expects to have field id's to be encoded in the Avro schema::
@@ -214,7 +214,7 @@ class AvroSchemaConversion:
         else:
             raise TypeError(f"Unknown type: {avro_type}")
 
-    def _convert_field(self, field: dict[str, Any]) -> NestedField:
+    def _convert_field(self, field: Dict[str, Any]) -> NestedField:
         """
         Converts an Avro field into an Iceberg equivalent field
         Args:
@@ -236,7 +236,7 @@ class AvroSchemaConversion:
             doc=field.get("doc"),
         )
 
-    def _convert_record_type(self, record_type: dict[str, Any]) -> StructType:
+    def _convert_record_type(self, record_type: Dict[str, Any]) -> StructType:
         """
         Converts the fields from a record into an Iceberg struct
 
@@ -290,7 +290,7 @@ class AvroSchemaConversion:
 
         return StructType(*[self._convert_field(field) for field in record_type["fields"]])
 
-    def _convert_array_type(self, array_type: dict[str, Any]) -> ListType:
+    def _convert_array_type(self, array_type: Dict[str, Any]) -> ListType:
         if "element-id" not in array_type:
             raise ValueError(f"Cannot convert array-type, missing element-id: {array_type}")
 
@@ -302,7 +302,7 @@ class AvroSchemaConversion:
             element_required=element_required,
         )
 
-    def _convert_map_type(self, map_type: dict[str, Any]) -> MapType:
+    def _convert_map_type(self, map_type: Dict[str, Any]) -> MapType:
         """
         Args:
             map_type: The dict that describes the Avro map type
@@ -338,7 +338,7 @@ class AvroSchemaConversion:
             value_required=value_required,
         )
 
-    def _convert_logical_type(self, avro_logical_type: dict[str, Any]) -> IcebergType:
+    def _convert_logical_type(self, avro_logical_type: Dict[str, Any]) -> IcebergType:
         """
         Convert a schema with a logical type annotation. For the decimal and map
         we need to fetch more keys from the dict, and for the simple ones we can just
@@ -374,7 +374,7 @@ class AvroSchemaConversion:
         else:
             raise ValueError(f"Unknown logical/physical type combination: {avro_logical_type}")
 
-    def _convert_logical_decimal_type(self, avro_type: dict[str, Any]) -> DecimalType:
+    def _convert_logical_decimal_type(self, avro_type: Dict[str, Any]) -> DecimalType:
         """
         Args:
             avro_type: The Avro type
@@ -400,7 +400,7 @@ class AvroSchemaConversion:
         """
         return DecimalType(precision=avro_type["precision"], scale=avro_type["scale"])
 
-    def _convert_logical_map_type(self, avro_type: dict[str, Any]) -> MapType:
+    def _convert_logical_map_type(self, avro_type: Dict[str, Any]) -> MapType:
         """
         In the case where a map hasn't a key as a type you can use a logical map to
         still encode this in Avro
@@ -452,7 +452,7 @@ class AvroSchemaConversion:
             value_required=value.required,
         )
 
-    def _convert_fixed_type(self, avro_type: dict[str, Any]) -> FixedType:
+    def _convert_fixed_type(self, avro_type: Dict[str, Any]) -> FixedType:
         """
         https://avro.apache.org/docs/current/spec.html#Fixed
 

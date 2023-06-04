@@ -15,6 +15,7 @@
 #  specific language governing permissions and limitations
 #  under the License.
 from json import JSONDecodeError
+from enum import Enum
 from typing import (
     Any,
     Dict,
@@ -58,6 +59,7 @@ from pyiceberg.schema import Schema
 from pyiceberg.table import Table, TableMetadata
 from pyiceberg.table.sorting import UNSORTED_SORT_ORDER, SortOrder
 from pyiceberg.typedef import EMPTY_DICT, IcebergBaseModel
+import time
 
 ICEBERG_REST_SPEC_VERSION = "0.14.1"
 
@@ -105,6 +107,9 @@ class TableResponse(IcebergBaseModel):
     metadata: TableMetadata = Field()
     config: Properties = Field(default_factory=dict)
 
+class CommitTableResponse(IcebergBaseModel):
+    metadata_location: str = Field(alias="metadata-location")
+    metadata: TableMetadata = Field()
 
 class CreateTableRequest(IcebergBaseModel):
     name: str = Field()
@@ -116,12 +121,100 @@ class CreateTableRequest(IcebergBaseModel):
     properties: Properties = Field(default_factory=dict)
 
 
+class UpdateOperation(str, Enum):
+    append = "append"
+    replace = "replace"
+    overwrite = "overwrite"
+    delete = "delete"
+
+class Summary(IcebergBaseModel):
+    operation: UpdateOperation = Field()
+    additionalProperties: str = Field()
+
+class Snapshot(IcebergBaseModel):
+    snapshot_id: int = Field(alias="snapshot-id")
+    parent_snapshot_id: Optional[int] = Field(alias="parent-snapshot-id")
+    sequence_number: Optional[int]  = Field(alias="sequence-number")
+    timestamp_ms: int = Field(alias="timestamp-ms")
+    manifest_list: str = Field(alias="manifest-list")
+    summary: Summary = Field()
+    schema_id: Optional[int] = Field(alias="schema-id")
+
+
+class ActionOperation(str, Enum):
+    upgradeFormatVersion = "upgrade-format-version"
+    addSchema = "add-schema"
+    setCurrentSchema = "set-current-schema"
+    addSspec = "add-spec"
+    setDefaultSpec = "set-default-spec"
+    addSortOrder = "add-sort-order"
+    setDefaultSortOrder = "set-default-sort-order"
+    addSnapshot = "add-snapshot"
+    setSnapshotRef = "set-snapshot-ref"
+    removeSnapshots = "remove-snapshots"
+    removeSnapshotRef = "remove-snapshot-ref"
+    setLocation = "set-location"
+    setProperties = "set-properties"
+    removeProperties = "remove-properties"
+
+class BaseUpdate(IcebergBaseModel):
+    action: ActionOperation = Field()
+
+class AddSnapshotUpdate(BaseUpdate):
+    snapshot: Snapshot = Field()
+
+    def __init__(self, **data):
+        super().__init__(action = ActionOperation.addSnapshot, **data)
+
+
+class SnapshotReferenceType(str, Enum):
+    tag = "tag"
+    branch = "branch"
+
+class SnapshotReference(IcebergBaseModel):
+    type: SnapshotReferenceType = Field()
+    snapshot_id: int = Field(alias="snapshot-id")
+    maxRefAgeMs: Optional[int] = Field(alias="max-ref-age-ms")
+    maxSnapshotAgeMs: Optional[int] = Field(alias="max-snapshot-age-ms")
+    minSnapshotsToKeep: Optional[int] = Field(alias="min-snapshots-to-keep")
+
+class SetSnapshotRefUpdate(BaseUpdate, SnapshotReference):
+    ref_name: Optional[str] = Field(alias="ref-name")
+
+    def __init__(self, **data):
+        super().__init__(action = ActionOperation.setSnapshotRef, **data)
+
+class TableRequirementType(str, Enum):
+    assertCreate = "assert-create"
+    assertTableUUID = "assert-table-uuid"
+    assertRefSnapshotId = "assert-ref-snapshot-id"
+    assertLastAssignedFieldId = "assert-last-assigned-field-id"
+    assertCurrentSchemaId = "assert-current-schema-id"
+    assertLastAssignedPartitionId = "assert-last-assigned-partition-id"
+    assertDefaultSpecId = "assert-default-spec-id"
+    assertDefaultSortOrderId = "assert-default-sort-order-id"
+
+
+class TableRequirement(IcebergBaseModel):
+    type: TableRequirementType = Field()
+    ref: Optional[str] = Field()
+    uuid: Optional[str] = Field()
+    snapshot_id: Optional[int] = Field(alias="snapshot-id")
+    last_assigned_field_id: Optional[int] = Field(alias="last-assigned-field-id")
+    current_schema_id: Optional[int] = Field(alias="current-schema-id")
+    last_assigned_partition_id: Optional[int] = Field(alias="last-assigned-partition-id")
+    default_spec_id: Optional[int] = Field(alias="default-spec-id")
+    default_sort_order_id: Optional[int] = Field(alias="default-sort-order-id")
+
+class CommitTableRequest(IcebergBaseModel):
+    requirements: List[TableRequirement] = Field()
+    updates: List[BaseUpdate] = Field()
+
 class TokenResponse(IcebergBaseModel):
     access_token: str = Field()
     token_type: str = Field()
     expires_in: int = Field()
     issued_token_type: str = Field()
-
 
 class ConfigResponse(IcebergBaseModel):
     defaults: Properties = Field()
@@ -334,6 +427,70 @@ class RestCatalog(Catalog):
             )
 
         raise exception(response) from exc
+
+    def update_table(
+        self,
+        identifier: Union[str, Identifier],
+        table_uuid: str,
+        snapshot_id: int,
+        manifest_list_file: str
+    ) -> Table:
+        namespace_and_table = self._split_identifier_for_path(identifier)
+
+        addSnapshot = AddSnapshotUpdate(
+            snapshot = Snapshot(
+                snapshot_id = snapshot_id,
+                # sequence number
+                timestamp_ms = int(time.time()*1000), # is it the time of the request?
+                manifest_list = manifest_list_file,
+                summary = Summary(
+                    operation = UpdateOperation.append,
+                    additionalProperties = ""
+                ),
+            )
+        )
+
+        setReference = SetSnapshotRefUpdate(
+            ref_name= "main",
+            type = SnapshotReferenceType.tag,
+            snapshot_id = snapshot_id,
+        )
+
+        requirements = [
+            #TableRequirement(
+            #    type = TableRequirementType.assertCreate
+            #),
+            TableRequirement(
+                type = TableRequirementType.assertTableUUID,
+                uuid = table_uuid,
+            ),
+        ]
+
+        request = CommitTableRequest(
+            requirements = requirements,
+            updates = [addSnapshot, setReference]
+        )
+
+        serialized_json = request.json()
+        response = self._session.post(
+            self.url(Endpoints.update_table, **namespace_and_table),
+            data=serialized_json,
+        )
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            self._handle_non_200_response(exc, {409: TableAlreadyExistsError})
+
+        table_response = CommitTableResponse(**response.json())
+
+        return Table(
+            identifier=(self.name,) + self.identifier_to_tuple(identifier),
+            metadata_location=table_response.metadata_location,
+            metadata=table_response.metadata,
+            io=self._load_file_io(
+                {**table_response.metadata.properties}, table_response.metadata_location
+            ),
+        )
 
     def create_table(
         self,

@@ -100,14 +100,14 @@ DATA_FILE_TYPE = StructType(
         field_id=108,
         name="column_sizes",
         field_type=MapType(key_id=117, key_type=IntegerType(), value_id=118, value_type=LongType()),
-        required=True,
+        required=False,
         doc="Map of column id to total size on disk",
     ),
     NestedField(
         field_id=109,
         name="value_counts",
         field_type=MapType(key_id=119, key_type=IntegerType(), value_id=120, value_type=LongType()),
-        required=True,
+        required=False,
         doc="Map of column id to total count, including null and NaN",
     ),
     NestedField(
@@ -171,7 +171,7 @@ class DataFile(Record):
     nan_value_counts: Dict[int, int]
     lower_bounds: Dict[int, bytes]
     upper_bounds: Dict[int, bytes]
-    key_metadata: Optional[bytes]
+    key_metadata: Optional[bytes]   
     split_offsets: Optional[List[int]]
     equality_ids: Optional[List[int]]
     sort_order_id: Optional[int]
@@ -192,7 +192,7 @@ MANIFEST_ENTRY_SCHEMA = Schema(
     NestedField(1, "snapshot_id", LongType(), required=False),
     NestedField(3, "sequence_number", LongType(), required=False),
     NestedField(4, "file_sequence_number", LongType(), required=False),
-    NestedField(2, "data_file", DATA_FILE_TYPE, required=False),
+    NestedField(2, "data_file", DATA_FILE_TYPE, required=True),
 )
 
 

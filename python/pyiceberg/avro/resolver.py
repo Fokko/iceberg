@@ -56,6 +56,7 @@ from pyiceberg.avro.writer import (
     IntegerWriter,
     ListWriter,
     MapWriter,
+    OptionWriter,
     StringWriter,
     StructWriter,
     TimestamptzWriter,
@@ -135,7 +136,10 @@ class ConstructWriter(SchemaVisitorPerPrimitiveType[Writer]):
         return StructWriter(tuple(field_results))
 
     def field(self, field: NestedField, field_result: Writer) -> Writer:
-        return field_result
+        if field.required:
+            return field_result
+        else:
+            return OptionWriter(field_result)
 
     def list(self, list_type: ListType, element_result: Writer) -> Writer:
         return ListWriter(element_result)
