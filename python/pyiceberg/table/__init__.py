@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import itertools
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
@@ -38,7 +37,7 @@ from typing import (
     Union,
 )
 
-from pydantic import Field
+from pydantic import Field, SerializeAsAny
 from sortedcontainers import SortedList
 
 from pyiceberg.expressions import (
@@ -85,6 +84,7 @@ from pyiceberg.types import (
     PrimitiveType,
     StructType,
 )
+from pyiceberg.utils.concurrent import ExecutorFactory
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -389,18 +389,18 @@ class AssertDefaultSortOrderId(TableRequirement):
 
 class CommitTableRequest(IcebergBaseModel):
     identifier: Identifier = Field()
-    requirements: List[TableRequirement] = Field(default_factory=list)
-    updates: List[TableUpdate] = Field(default_factory=list)
+    requirements: List[SerializeAsAny[TableRequirement]] = Field(default_factory=list)
+    updates: List[SerializeAsAny[TableUpdate]] = Field(default_factory=list)
 
 
 class CommitTableResponse(IcebergBaseModel):
-    metadata: TableMetadata = Field()
+    metadata: TableMetadata
     metadata_location: str = Field(alias="metadata-location")
 
 
 class Table:
     identifier: Identifier = Field()
-    metadata: TableMetadata = Field()
+    metadata: TableMetadata
     metadata_location: str = Field()
     io: FileIO
     catalog: Catalog
@@ -802,33 +802,31 @@ class DataScan(TableScan):
         data_entries: List[ManifestEntry] = []
         positional_delete_entries = SortedList(key=lambda entry: entry.data_sequence_number or INITIAL_SEQUENCE_NUMBER)
 
-        with ThreadPoolExecutor() as executor:
-            for manifest_entry in chain(
-                *executor.map(
-                    lambda args: _open_manifest(*args),
-                    [
-                        (
-                            io,
-                            manifest,
-                            partition_evaluators[manifest.partition_spec_id],
-                            metrics_evaluator,
-                        )
-                        for manifest in manifests
-                        if self._check_sequence_number(min_data_sequence_number, manifest)
-                    ],
-                )
-            ):
-                data_file = manifest_entry.data_file
-                if data_file.content == DataFileContent.DATA:
-                    data_entries.append(manifest_entry)
-                elif data_file.content == DataFileContent.POSITION_DELETES:
-                    positional_delete_entries.add(manifest_entry)
-                elif data_file.content == DataFileContent.EQUALITY_DELETES:
-                    raise ValueError(
-                        "PyIceberg does not yet support equality deletes: https://github.com/apache/iceberg/issues/6568"
+        executor = ExecutorFactory.get_or_create()
+        for manifest_entry in chain(
+            *executor.map(
+                lambda args: _open_manifest(*args),
+                [
+                    (
+                        io,
+                        manifest,
+                        partition_evaluators[manifest.partition_spec_id],
+                        metrics_evaluator,
                     )
-                else:
-                    raise ValueError(f"Unknown DataFileContent ({data_file.content}): {manifest_entry}")
+                    for manifest in manifests
+                    if self._check_sequence_number(min_data_sequence_number, manifest)
+                ],
+            )
+        ):
+            data_file = manifest_entry.data_file
+            if data_file.content == DataFileContent.DATA:
+                data_entries.append(manifest_entry)
+            elif data_file.content == DataFileContent.POSITION_DELETES:
+                positional_delete_entries.add(manifest_entry)
+            elif data_file.content == DataFileContent.EQUALITY_DELETES:
+                raise ValueError("PyIceberg does not yet support equality deletes: https://github.com/apache/iceberg/issues/6568")
+            else:
+                raise ValueError(f"Unknown DataFileContent ({data_file.content}): {manifest_entry}")
 
         return [
             FileScanTask(
@@ -871,7 +869,7 @@ class DataScan(TableScan):
 
 
 class UpdateSchema:
-    def __init__(self, schema: Schema, table: Optional[Table] = None, last_column_id: Optional[int] = None):
+    def __init__(self, schema: Schema, table: Table, last_column_id: Optional[int] = None):
         self._table = table
         self._schema = schema
         if last_column_id:
@@ -886,7 +884,7 @@ class UpdateSchema:
         self._allow_incompatible_changes: bool = False
         self._case_sensitive: bool = True
 
-    def __exit__(self, _: Any, value: Any, traceback: Any) -> None:
+    def __exit__(self, _: Any, value: Any, traceback: Any) -> Table:
         """Closes and commits the change."""
         return self.commit()
 
@@ -940,18 +938,22 @@ class UpdateSchema:
         self._allow_incompatible_changes = True
         return self
 
-    def commit(self) -> None:
+    def commit(self) -> Table:
         """Apply the pending changes and commit."""
         if self._table is None:
             raise ValueError("Cannot commit schema update, table is not set")
-
         # Strip the catalog name
-        self._table.catalog._commit_table(  # pylint: disable=W0212
+        table_update_response = self._table.catalog._commit_table(  # pylint: disable=W0212
             CommitTableRequest(
                 identifier=self._table.identifier[1:],
                 updates=[AddSchemaUpdate(schema=self._apply())],
             )
         )
+
+        self._table.metadata = table_update_response.metadata
+        self._table.metadata_location = table_update_response.metadata_location
+
+        return self._table
 
     def _apply(self) -> Schema:
         """Apply the pending changes to the original schema and returns the result.

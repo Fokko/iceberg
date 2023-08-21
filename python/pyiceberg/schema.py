@@ -1111,9 +1111,9 @@ class _SetFreshIDs(PreOrderSchemaVisitor[IcebergType]):
     reserved_ids: Dict[int, int]
 
     def __init__(self, start: int = 1, next_id_func: Optional[Callable[[], int]] = None) -> None:
-        self.counter = itertools.count(start)
         self.reserved_ids = {}
-        self.next_id_func = next_id_func if next_id_func is not None else lambda: next(self.counter)
+        counter = itertools.count(start)
+        self.next_id_func = next_id_func if next_id_func is not None else lambda: next(counter)
 
     def _get_and_increment(self) -> int:
         return self.next_id_func()

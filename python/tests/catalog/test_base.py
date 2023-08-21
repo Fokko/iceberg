@@ -92,8 +92,8 @@ class InMemoryCatalog(Catalog):
                     "location": new_location,
                     "last-updated-ms": 1602638573874,
                     "last-column-id": schema.highest_field_id,
-                    "schema": schema,
-                    "partition-spec": partition_spec.dict()["fields"],
+                    "schema": schema.model_dump(),
+                    "partition-spec": partition_spec.model_dump()["fields"],
                     "properties": properties,
                     "current-snapshot-id": -1,
                     "snapshots": [{"snapshot-id": 1925, "timestamp-ms": 1602638573822}],
@@ -138,7 +138,8 @@ class InMemoryCatalog(Catalog):
                 metadata_location = f's3://warehouse/{"/".join(identifier)}/metadata/metadata.json'
 
         return CommitTableResponse(
-            metadata=new_metadata.dict() if new_metadata else {}, metadata_location=metadata_location if metadata_location else ""
+            metadata=new_metadata.model_dump() if new_metadata else {},
+            metadata_location=metadata_location if metadata_location else "",
         )
 
     def load_table(self, identifier: Union[str, Identifier]) -> Table:
@@ -541,14 +542,12 @@ def test_add_column(catalog: InMemoryCatalog) -> None:
     field_name2 = "new_column2"
 
     # When
-    (
+    table: Table = (
         given_table.update_schema()
         .add_column(name=field_name1, type_var=IntegerType(), doc="doc")
         .add_column(name=field_name2, type_var=LongType())
         .commit()
     )
-
-    table: Table = catalog.load_table(TEST_TABLE_IDENTIFIER[1:])
 
     # Then
     assert table.schema().find_field(field_name1).name == field_name1

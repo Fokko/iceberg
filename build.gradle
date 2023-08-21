@@ -291,8 +291,6 @@ project(':iceberg-api') {
     implementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
     compileOnly libs.errorprone.annotations
     compileOnly libs.findbugs.jsr305
-    annotationProcessor libs.immutables.value
-    compileOnly libs.immutables.value
     testImplementation libs.avro.avro
     testImplementation libs.esotericsoftware.kryo
   }
@@ -608,8 +606,8 @@ project(':iceberg-gcp') {
     implementation project(':iceberg-common')
     implementation project(':iceberg-core')
 
-    implementation platform(libs.google.libraries.bom)
-    implementation "com.google.cloud:google-cloud-storage"
+    compileOnly platform(libs.google.libraries.bom)
+    compileOnly "com.google.cloud:google-cloud-storage"
 
     testImplementation "com.google.cloud:google-cloud-nio"
 
