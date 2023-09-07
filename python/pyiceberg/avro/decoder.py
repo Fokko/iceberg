@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+import io
 from abc import ABC, abstractmethod
 from io import SEEK_CUR
 from typing import (
@@ -141,7 +142,10 @@ class StreamingBinaryDecoder(BinaryDecoder):
     def __init__(self, input_stream: InputStream) -> None:
         """Reader is a Python object on which we can call read, seek, and tell."""
         super().__init__(input_stream)
-        self._input_stream = input_stream
+        if isinstance(input_stream, bytes):
+            self._input_stream = io.BytesIO(input_stream)
+        else:
+            self._input_stream = input_stream
 
     def tell(self) -> int:
         """Return the current stream position."""
