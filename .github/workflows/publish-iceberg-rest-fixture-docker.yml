@@ -28,7 +28,7 @@ on:
 env:
   DOCKER_IMAGE_TAG: iceberg-rest-fixture
   DOCKER_IMAGE_VERSION: latest
-  DOCKER_REPOSITORY: apache
+  DOCKER_REPOSITORY: fokkodriesprong
 
 jobs:
   build:
@@ -59,4 +59,4 @@ jobs:
         file: docker/iceberg-rest-fixture/Dockerfile
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION
+        tags: ${{ env.DOCKER_REPOSITORY }}/${{ env.DOCKER_IMAGE_TAG }}:${{ env.DOCKER_IMAGE_VERSION }}
