@@ -52,8 +52,11 @@ jobs:
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    - name: Build Docker Image
-      run: docker build -t $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION --platform=linux/amd64,linux/arm64 -f docker/iceberg-rest-fixture/Dockerfile .
-    - name: Push Docker Image
-      run: |
-        docker push $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION
+    - name: Build and Push
+      uses: docker/build-push-action@v6
+      with:
+        context: docker/iceberg-rest-fixture/
+        file: docker/iceberg-rest-fixture/Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION
