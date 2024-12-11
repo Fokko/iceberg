@@ -50,7 +50,7 @@ jobs:
       run: |
         echo "DOCKER_IMAGE_VERSION=`echo ${{ github.ref }} | tr -d -c 0-9.`" >> "$GITHUB_ENV"
     - name: Build Docker Image
-      run: docker build -t $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION --platform=linux/amd64,linux/arm64 -f docker/iceberg-rest-fixture/Dockerfile .
+      run: docker buildx build -t $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION --platform=linux/amd64,linux/arm64 -f docker/iceberg-rest-fixture/Dockerfile .
     - name: Push Docker Image
       run: |
         docker push $DOCKER_REPOSITORY/$DOCKER_IMAGE_TAG:$DOCKER_IMAGE_VERSION
